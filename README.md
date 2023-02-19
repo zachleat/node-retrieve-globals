@@ -6,6 +6,14 @@ Execute a string of JavaScript using Node.js and return the global variable valu
 * Can return any JavaScript data types
 * Can provide external variable values as context to the local scope
 
+## Installation
+
+Available on [npm](https://www.npmjs.com/package/node-retrieve-globals)
+
+```
+npm install node-retrieve-globals
+```
+
 ## Usage
 
 ```js
