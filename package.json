@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "description": "Execute a string of JavaScript using Node.js and return the global variable values and functions.",
   "type": "module",
-  "main": "moduleScript.cjs",
+  "main": "retrieveGlobals.cjs",
   "scripts": {
     "test": "npx ava"
   },

@@ -2,11 +2,12 @@ const vm = require("vm");
 const acorn = require("acorn");
 const walk = require("acorn-walk");
 
-class ModuleScript {
+class RetrieveGlobals {
 	constructor(code, filePath) {
 		this.code = code;
 		this.filePath = filePath;
 
+		// set defaults
 		this.setAcornOptions();
 	}
 
@@ -33,18 +34,25 @@ class ModuleScript {
 		}
 	}
 
-	static getCode(code, isAsync, globalNames) {
+	static _getCode(code, isAsync, globalNames) {
 		return `(${isAsync ? "async " : ""}function() {
 	${code}
-	${globalNames ? ModuleScript._getGlobalVariablesReturnString(globalNames) : ""}
+	${globalNames ? RetrieveGlobals._getGlobalVariablesReturnString(globalNames) : ""}
 })();`;
 	}
 
 	_getGlobalContext(data, isAsync) {
-		let context = vm.createContext(data || {});
+		data = data || {};
+
+		let context;
+		if(vm.isContext(data)) {
+			context = data;
+		} else {
+			context = vm.createContext(data);
+		}
 
 		try {
-			let parseCode = ModuleScript.getCode(this.code, isAsync, false);
+			let parseCode = RetrieveGlobals._getCode(this.code, isAsync, false);
 			let parsed = acorn.parse(parseCode, this.acornOptions);
 	
 			let globalNames = new Set();
@@ -58,7 +66,7 @@ class ModuleScript {
 				}
 			});
 
-			let execCode = ModuleScript.getCode(this.code, isAsync, globalNames);
+			let execCode = RetrieveGlobals._getCode(this.code, isAsync, globalNames);
 			return vm.runInContext(execCode, context);
 		} catch(e) {
 
@@ -93,4 +101,4 @@ ${parseCode}`);
 	}
 }
 
-module.exports = { ModuleScript };
+module.exports = { RetrieveGlobals };
