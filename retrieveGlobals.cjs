@@ -9,12 +9,22 @@ class RetrieveGlobals {
 
 		// set defaults
 		this.setAcornOptions();
+		this.setCreateContextOptions();
 	}
 
 	setAcornOptions(acornOptions) {
 		this.acornOptions = Object.assign({
 			ecmaVersion: "latest",
 		}, acornOptions );
+	}
+
+	setCreateContextOptions(contextOptions) {
+		this.createContextOptions = Object.assign({
+			codeGeneration: {
+				strings: false,
+				wasm: false,
+			}
+		}, contextOptions );
 	}
 
 	// We prune function and variable declarations that aren’t globally declared
@@ -48,7 +58,7 @@ class RetrieveGlobals {
 		if(vm.isContext(data)) {
 			context = data;
 		} else {
-			context = vm.createContext(data);
+			context = vm.createContext(data, this.createContextOptions);
 		}
 
 		try {
