@@ -1,5 +1,5 @@
 import test from "ava";
-import { ModuleScript } from "../moduleScript.cjs";
+import { ModuleScript } from "../moduleScript.js";
 
 test("var", t => {
 	let vm = new ModuleScript("var a = 1;");

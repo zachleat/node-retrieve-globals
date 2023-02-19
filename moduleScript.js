@@ -1,6 +1,6 @@
-const vm = require("vm");
-const acorn = require("acorn");
-const walk = require("acorn-walk");
+import vm from "vm";
+import { parse } from "acorn";
+import { simple } from "acorn-walk";
 
 class ModuleScript {
 	constructor(code, filePath) {
@@ -45,11 +45,11 @@ class ModuleScript {
 
 		try {
 			let parseCode = ModuleScript.getCode(this.code, isAsync, false);
-			let parsed = acorn.parse(parseCode, this.acornOptions);
+			let parsed = parse(parseCode, this.acornOptions);
 	
 			let globalNames = new Set();
 	
-			walk.simple(parsed, {
+			simple(parsed, {
 				FunctionDeclaration(node) {
 					globalNames.add(node.id.name);
 				},
@@ -93,4 +93,4 @@ ${parseCode}`);
 	}
 }
 
-module.exports = { ModuleScript };
+export { ModuleScript };
