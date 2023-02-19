@@ -17,8 +17,8 @@ npm install node-retrieve-globals
 ## Usage
 
 ```js
-// const { ModuleScript } = require("node-retrieve-globals");
-import { ModuleScript } from "node-retrieve-globals";
+// const { RetrieveGlobals } = require("node-retrieve-globals");
+import { RetrieveGlobals } from "node-retrieve-globals";
 ```
 
 And then:
@@ -29,7 +29,7 @@ const b = "hello";
 
 function hello() {}`;
 
-let vm = new ModuleScript(code);
+let vm = new RetrieveGlobals(code);
 
 vm.getGlobalContextSync();
 // or await vm.getGlobalContext();
@@ -46,7 +46,7 @@ Returns:
 ```js
 let code = `let ref = myData;`;
 
-let vm = new ModuleScript(code);
+let vm = new RetrieveGlobals(code);
 
 vm.getGlobalContextSync({ myData: "hello" });
 // or await vm.getGlobalContext({ myData: "hello" });
