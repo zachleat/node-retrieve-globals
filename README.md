@@ -17,6 +17,13 @@ npm install node-retrieve-globals
 ## Usage
 
 ```js
+// const { ModuleScript } = require("node-retrieve-globals");
+import { ModuleScript } from "node-retrieve-globals";
+```
+
+And then:
+
+```js
 let code = `var a = 1;
 const b = "hello";
 
