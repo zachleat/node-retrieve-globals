@@ -1,15 +1,22 @@
 {
   "name": "node-retrieve-globals",
   "version": "1.0.0",
-  "description": "",
+  "description": "Execute a string of JavaScript using Node.js and return the global variable values and functions.",
   "type": "module",
   "main": "moduleScript.cjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx ava"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zachleat/node-retrieve-globals.git"
+  },
+  "author": {
+    "name": "Zach Leatherman",
+    "email": "zachleatherman@gmail.com",
+    "url": "https://zachleat.com/"
+  },
+  "license": "MIT",
   "devDependencies": {
     "ava": "^5.2.0"
   }
