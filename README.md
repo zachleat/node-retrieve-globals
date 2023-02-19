@@ -26,7 +26,7 @@ Returns:
 { a: 1, b: "hello", hello: function hello() {} }
 ```
 
-## Pass in your own Data and reference it in the JavaScript code
+### Pass in your own Data and reference it in the JavaScript code
 
 ```js
 let code = `let ref = myData;`;
