@@ -2,9 +2,11 @@
 
 Execute a string of JavaScript using Node.js and return the global variable values and functions.
 
-* Sync and async methods for synchronous or asynchronous JavaScript code respectively.
-* Can return any JavaScript data types
-* Can provide external variable values as context to the local scope
+* Async-friendly but synchronous methods are available.
+* Can return any valid JS data type (including functions).
+* Can provide an external data object as context to the local execution scope
+* Uses [Node’s `vm` module to execute JavaScript](https://nodejs.org/api/vm.html#vmruninthiscontextcode-options)
+	* `codeGeneration` (e.g. `eval`) is disabled by default; use `setCreateContextOptions({codeGeneration: { strings: true, wasm: true } })` to re-enable.
 
 ## Installation
 
@@ -16,9 +18,11 @@ npm install node-retrieve-globals
 
 ## Usage
 
+Works from Node.js with ESM and CommonJS:
+
 ```js
-// const { RetrieveGlobals } = require("node-retrieve-globals");
 import { RetrieveGlobals } from "node-retrieve-globals";
+// const { RetrieveGlobals } = require("node-retrieve-globals");
 ```
 
 And then:
@@ -31,8 +35,10 @@ function hello() {}`;
 
 let vm = new RetrieveGlobals(code);
 
-vm.getGlobalContextSync();
-// or await vm.getGlobalContext();
+await vm.getGlobalContext();
+
+// or sync:
+// vm.getGlobalContextSync();
 ```
 
 Returns:
@@ -48,8 +54,10 @@ let code = `let ref = myData;`;
 
 let vm = new RetrieveGlobals(code);
 
-vm.getGlobalContextSync({ myData: "hello" });
-// or await vm.getGlobalContext({ myData: "hello" });
+await vm.getGlobalContext({ myData: "hello" });
+
+// or sync:
+// vm.getGlobalContextSync({ myData: "hello" });
 ```
 
 Returns:
