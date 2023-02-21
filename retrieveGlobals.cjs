@@ -108,8 +108,15 @@ class RetrieveGlobals {
 					globalNames.add(node.id.name);
 				},
 				VariableDeclarator(node) {
-					// destructuring assignment
-					if(node.id.type === "ObjectPattern") {
+					// destructuring assignment Array
+					if(node.id.type === "ArrayPattern") {
+						for(let prop of node.id.elements) {
+							if(prop.type === "Identifier") {
+								globalNames.add(prop.name);
+							}
+						}
+					} else if(node.id.type === "ObjectPattern") {
+						// destructuring assignment Object
 						for(let prop of node.id.properties) {
 							if(prop.type === "Property") {
 								globalNames.add(prop.value.name);

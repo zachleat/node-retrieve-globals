@@ -48,7 +48,24 @@ test("async let", async t => {
 	t.deepEqual(ret, { b: 1 });
 });
 
-test("import", async t => {
+test("destructured assignment via object", async t => {
+	let vm = new RetrieveGlobals(`const { a } = { a: 1 };`);
+	let ret = await vm.getGlobalContext();
+	t.is(typeof ret.a, "number");
+	t.is(ret.a, 1);
+});
+
+test("destructured assignment via Array", async t => {
+	let vm = new RetrieveGlobals(`const [a, b] = [1, 2];`);
+	let ret = await vm.getGlobalContext();
+	t.is(typeof ret.a, "number");
+	t.is(typeof ret.b, "number");
+	t.is(ret.a, 1);
+	t.is(ret.b, 2);
+});
+
+
+test("dynamic import", async t => {
 	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
 	let ret = await vm.getGlobalContext(undefined, {
 		dynamicImport: true
@@ -76,3 +93,4 @@ test("global: Same URL", async t => {
 	});
 	t.is(ret.b, URL);
 });
+
