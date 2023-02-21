@@ -2,6 +2,7 @@
 
 Execute a string of JavaScript using Node.js and return the global variable values and functions.
 
+* Supported on Node.js 14 and newer.
 * Async-friendly but synchronous methods are available.
 * Can return any valid JS data type (including functions).
 * Can provide an external data object as context to the local execution scope
