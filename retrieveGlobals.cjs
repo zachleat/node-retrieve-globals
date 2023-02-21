@@ -28,6 +28,19 @@ class RetrieveGlobals {
 		}, contextOptions );
 	}
 
+	static _getProxiedContext(context = {}) {
+		return new Proxy(context, {
+			get(target, propertyName) {
+				if(Reflect.has(target, propertyName)) {
+					return Reflect.get(target, propertyName);
+				}
+
+				// Re-use the parent `global` https://nodejs.org/api/globals.html
+				return global[propertyName] || undefined;
+			}
+		});
+	}
+
 	// We prune function and variable declarations that aren’t globally declared
 	// (our acorn walker could be improved to skip non-global declarations, but this method is easier for now)
 	static _getGlobalVariablesReturnString(names) {
@@ -56,8 +69,23 @@ class RetrieveGlobals {
 })();`;
 	}
 
-	_getGlobalContext(data, isAsync) {
-		data = data || {};
+	_getGlobalContext(data, options) {
+		let {
+			async: isAsync,
+			reuseGlobal,
+			dynamicImport,
+		} = Object.assign({
+			// defaults
+			async: true,
+			reuseGlobal: false,
+			dynamicImport: false,
+		}, options);
+
+		if(reuseGlobal) {
+			data = RetrieveGlobals._getProxiedContext(data || {});
+		} else {
+			data = data || {};
+		}
 
 		let context;
 		if(vm.isContext(data)) {
@@ -113,7 +141,16 @@ ${parseCode}`);
 
 		try {
 			let execCode = RetrieveGlobals._getCode(this.code, { async: isAsync, globalNames });
-			return vm.runInContext(execCode, context);
+			let execOptions = {};
+
+			if(dynamicImport) {
+				// Warning: this option is part of the experimental modules API
+				execOptions.importModuleDynamically = function(specifier) {
+					return import(specifier);
+				};
+			}
+
+			return vm.runInContext(execCode, context, execOptions);
 		} catch(e) {
 			throw new Error(`Had trouble executing script in Node:
 Message: ${e.message}
@@ -122,14 +159,18 @@ ${this.code}`);
 		}
 	}
 
-	getGlobalContextSync(data) {
-		let ret = this._getGlobalContext(data, false);
+	getGlobalContextSync(data, options) {
+		let ret = this._getGlobalContext(data, Object.assign({
+			async: false,
+		}, options));
 		this._setContextPrototype(ret);
 		return ret;
 	}
 
-	async getGlobalContext(data) {
-		let ret = await this._getGlobalContext(data, true);
+	async getGlobalContext(data, options) {
+		let ret = await this._getGlobalContext(data, Object.assign({
+			async: true,
+		}, options));
 		this._setContextPrototype(ret);
 		return ret;
 	}

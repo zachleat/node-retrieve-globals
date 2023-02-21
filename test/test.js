@@ -48,4 +48,37 @@ test("async let", async t => {
 	t.deepEqual(ret, { b: 1 });
 });
 
-// TODO code that parses fine but throws an error
+test.skip("require", async t => {
+	let vm = new RetrieveGlobals(`const { noop } = require("@zachleat/noop");`);
+	let ret = await vm.getGlobalContext();
+	t.is(typeof ret.noop, "function");
+});
+
+test("import", async t => {
+	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
+	let ret = await vm.getGlobalContext(undefined, {
+		dynamicImport: true
+	});
+	t.is(typeof ret.noop, "function");
+});
+
+test("global: same console.log", async t => {
+	let vm = new RetrieveGlobals(`const b = console.log`);
+	let ret = await vm.getGlobalContext(undefined, {
+		reuseGlobal: false
+	});
+	t.not(ret.b, console.log);
+
+	let ret2 = await vm.getGlobalContext(undefined, {
+		reuseGlobal: true
+	});
+	t.is(ret2.b, console.log);
+});
+
+test("global: Same URL", async t => {
+	let vm = new RetrieveGlobals(`const b = URL`);
+	let ret = await vm.getGlobalContext(undefined, {
+		reuseGlobal: true
+	});
+	t.is(ret.b, URL);
+});
