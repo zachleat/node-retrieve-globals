@@ -18,7 +18,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@zachleat/noop": "^1.0.2",
+    "@zachleat/noop": "^1.0.3",
     "ava": "^5.2.0"
   },
   "dependencies": {
