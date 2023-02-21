@@ -15,6 +15,7 @@ class RetrieveGlobals {
 	setAcornOptions(acornOptions) {
 		this.acornOptions = Object.assign({
 			ecmaVersion: "latest",
+			// sourceType: "module", node:vm doesn’t support modules yet
 		}, acornOptions );
 	}
 
@@ -44,7 +45,11 @@ class RetrieveGlobals {
 		}
 	}
 
-	static _getCode(code, isAsync, globalNames) {
+	static _getCode(code, options) {
+		let { async: isAsync, globalNames } = Object.assign({
+			async: true
+		}, options);
+
 		return `(${isAsync ? "async " : ""}function() {
 	${code}
 	${globalNames ? RetrieveGlobals._getGlobalVariablesReturnString(globalNames) : ""}
@@ -61,25 +66,33 @@ class RetrieveGlobals {
 			context = vm.createContext(data, this.createContextOptions);
 		}
 
+		let parseCode;
+		let globalNames;
+
 		try {
-			let parseCode = RetrieveGlobals._getCode(this.code, isAsync, false);
+			parseCode = RetrieveGlobals._getCode(this.code, { async: isAsync });
 			let parsed = acorn.parse(parseCode, this.acornOptions);
 	
-			let globalNames = new Set();
+			globalNames = new Set();
 	
 			walk.simple(parsed, {
 				FunctionDeclaration(node) {
 					globalNames.add(node.id.name);
 				},
 				VariableDeclarator(node) {
-					globalNames.add(node.id.name);
+					// destructuring assignment
+					if(node.id.type === "ObjectPattern") {
+						for(let prop of node.id.properties) {
+							if(prop.type === "Property") {
+								globalNames.add(prop.value.name);
+							}
+						}
+					} else if(node.id.name) {
+						globalNames.add(node.id.name);
+					}
 				}
 			});
-
-			let execCode = RetrieveGlobals._getCode(this.code, isAsync, globalNames);
-			return vm.runInContext(execCode, context);
 		} catch(e) {
-
 			// Acorn parsing error on script
 			let metadata = [];
 			if(this.filePath) {
@@ -92,9 +105,20 @@ class RetrieveGlobals {
 				metadata.push(`column: ${e.loc.column}`);
 			}
 
-			throw new Error(`Had trouble parsing${metadata.length ? ` (${metadata.join(", ")})` : ""}:
-${e.message}
+			throw new Error(`Had trouble parsing with "acorn"${metadata.length ? ` (${metadata.join(", ")})` : ""}:
+Message: ${e.message}
+
 ${parseCode}`);
+		}
+
+		try {
+			let execCode = RetrieveGlobals._getCode(this.code, { async: isAsync, globalNames });
+			return vm.runInContext(execCode, context);
+		} catch(e) {
+			throw new Error(`Had trouble executing script in Node:
+Message: ${e.message}
+
+${this.code}`);
 		}
 	}
 
