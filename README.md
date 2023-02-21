@@ -6,6 +6,7 @@ Execute a string of JavaScript using Node.js and return the global variable valu
 * Can return any valid JS data type (including functions).
 * Can provide an external data object as context to the local execution scope
 * Uses [Node’s `vm` module to execute JavaScript](https://nodejs.org/api/vm.html#vmruninthiscontextcode-options)
+	* ⚠️ The `node:vm` module is not a security mechanism. Do not use it to run untrusted code.
 	* `codeGeneration` (e.g. `eval`) is disabled by default; use `setCreateContextOptions({codeGeneration: { strings: true, wasm: true } })` to re-enable.
 
 ## Installation
