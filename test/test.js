@@ -48,12 +48,6 @@ test("async let", async t => {
 	t.deepEqual(ret, { b: 1 });
 });
 
-test.skip("require", async t => {
-	let vm = new RetrieveGlobals(`const { noop } = require("@zachleat/noop");`);
-	let ret = await vm.getGlobalContext();
-	t.is(typeof ret.noop, "function");
-});
-
 test("import", async t => {
 	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
 	let ret = await vm.getGlobalContext(undefined, {
