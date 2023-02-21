@@ -66,3 +66,15 @@ Returns:
 ```js
 { ref: "hello" }
 ```
+
+### Advanced options
+
+```js
+// Defaults shown
+let options = {
+	reuseGlobal: false, // re-use Node.js `global`, important if you want `console.log` to log to your console as expected.
+	dynamicImport: false, // allows `import()`
+};
+
+await vm.getGlobalContext({}, options);
+

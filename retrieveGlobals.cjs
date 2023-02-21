@@ -163,7 +163,9 @@ ${this.code}`);
 		let ret = this._getGlobalContext(data, Object.assign({
 			async: false,
 		}, options));
+
 		this._setContextPrototype(ret);
+
 		return ret;
 	}
 
@@ -171,7 +173,9 @@ ${this.code}`);
 		let ret = await this._getGlobalContext(data, Object.assign({
 			async: true,
 		}, options));
+
 		this._setContextPrototype(ret);
+
 		return ret;
 	}
 }
