@@ -13,7 +13,7 @@ Execute a string of JavaScript using Node.js and return the global variable valu
 * In use on:
 
 	* [JavaScript in Eleventy Front Matter](https://www.11ty.dev/docs/data-frontmatter-customize/#example-use-javascript-in-your-front-matter) (and [Demo](https://github.com/11ty/demo-eleventy-js-front-matter))
-	* [WebC’s `<script webc:setup>`](https://www.11ty.dev/docs/languages/webc/#using-javascript-for-data-with-webcsetup)
+	* [WebC’s `<script webc:setup>`](https://www.11ty.dev/docs/languages/webc/#using-javascript-to-setup-your-component-webcsetup)
 
 ## Installation
 
