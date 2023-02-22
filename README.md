@@ -3,12 +3,17 @@
 Execute a string of JavaScript using Node.js and return the global variable values and functions.
 
 * Supported on Node.js 14 and newer.
+* Uses `var`, `let`, `const`, `function`, Array and Object [destructuring assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment).
 * Async-friendly but synchronous methods are available.
 * Can return any valid JS data type (including functions).
 * Can provide an external data object as context to the local execution scope
 * Uses [Node’s `vm` module to execute JavaScript](https://nodejs.org/api/vm.html#vmruninthiscontextcode-options)
 	* ⚠️ The `node:vm` module is not a security mechanism. Do not use it to run untrusted code.
 	* `codeGeneration` (e.g. `eval`) is disabled by default; use `setCreateContextOptions({codeGeneration: { strings: true, wasm: true } })` to re-enable.
+* In use on:
+
+	* [JavaScript in Eleventy Front Matter](https://www.11ty.dev/docs/data-frontmatter-customize/#example-use-javascript-in-your-front-matter) (and [Demo](https://github.com/11ty/demo-eleventy-js-front-matter))
+	* [WebC’s `<script webc:setup>`](https://www.11ty.dev/docs/languages/webc/#using-javascript-for-data-with-webcsetup)
 
 ## Installation
 
