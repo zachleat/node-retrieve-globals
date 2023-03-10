@@ -53,8 +53,16 @@ class RetrieveGlobals {
 
 	_setContextPrototype(context) {
 		// Context will fail isPlainObject and won’t be merged in the data cascade properly without this prototype set
-		if(typeof context === "object") {
-			Object.setPrototypeOf(context, Object.prototype);
+		// See https://github.com/11ty/eleventy-utils/blob/main/src/IsPlainObject.js
+		if(typeof context !== "object") {
+			return;
+		}
+
+		Object.setPrototypeOf(context, Object.prototype);
+
+		// Go deep
+		for(let key in context) {
+			this._setContextPrototype(context[key]);
 		}
 	}
 
