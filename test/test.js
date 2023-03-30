@@ -110,3 +110,9 @@ test("global: Same URL", async t => {
 	t.is(ret.b, URL);
 });
 
+test("return array", t => {
+	let vm = new RetrieveGlobals("let b = [1,2,3];");
+	let globals = vm.getGlobalContextSync();
+	t.true(Array.isArray(globals.b));
+	t.deepEqual(globals.b, [1,2,3]);
+});
