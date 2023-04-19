@@ -1,6 +1,6 @@
 {
   "name": "node-retrieve-globals",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Execute a string of JavaScript using Node.js and return the global variable values and functions.",
   "type": "module",
   "main": "retrieveGlobals.cjs",
