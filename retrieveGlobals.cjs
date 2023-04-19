@@ -58,11 +58,13 @@ class RetrieveGlobals {
 			return;
 		}
 
-		Object.setPrototypeOf(context, Object.prototype);
+		if(!Object.getPrototypeOf(context).isPrototypeOf(Object.create({}))) {
+			Object.setPrototypeOf(context, Object.prototype);
 
-		// Go deep
-		for(let key in context) {
-			this._setContextPrototype(context[key]);
+			// Go deep
+			for(let key in context) {
+				this._setContextPrototype(context[key]);
+			}
 		}
 	}
 
@@ -108,9 +110,9 @@ class RetrieveGlobals {
 		try {
 			parseCode = RetrieveGlobals._getCode(this.code, { async: isAsync });
 			let parsed = acorn.parse(parseCode, this.acornOptions);
-	
+
 			globalNames = new Set();
-	
+
 			walk.simple(parsed, {
 				FunctionDeclaration(node) {
 					globalNames.add(node.id.name);

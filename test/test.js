@@ -15,7 +15,7 @@ test("isPlainObject", t => {
 		let proto = Object.getPrototypeOf(value);
 		return !proto || proto === Object.prototype;
 	};
-	
+
 	let vm = new RetrieveGlobals("var a = 1;");
 	t.true(isPlainObject(vm.getGlobalContextSync()));
 });
@@ -29,11 +29,31 @@ test("isPlainObject deep", t => {
 		let proto = Object.getPrototypeOf(value);
 		return !proto || proto === Object.prototype;
 	};
-	
+
 	let vm = new RetrieveGlobals("var a = { b: 1, c: { d: {} } };");
 	let obj = vm.getGlobalContextSync();
 	t.true(isPlainObject(obj.a.c));
 	t.true(isPlainObject(obj.a.c.d));
+});
+
+test("isPlainObject deep circular", t => {
+	// from eleventy-utils
+	function isPlainObject(value) {
+		if (value === null || typeof value !== "object") {
+			return false;
+		}
+		let proto = Object.getPrototypeOf(value);
+		return !proto || proto === Object.prototype;
+	};
+
+	let vm = new RetrieveGlobals(`
+var a = { a: 1 };
+var b = { b: a };
+a.b = b;
+`);
+	let obj = vm.getGlobalContextSync();
+	t.true(isPlainObject(obj.a.b));
+	t.true(isPlainObject(obj.b.b));
 });
 
 
