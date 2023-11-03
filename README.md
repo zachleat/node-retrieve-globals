@@ -2,7 +2,7 @@
 
 Execute a string of JavaScript using Node.js and return the global variable values and functions.
 
-* Supported on Node.js 14 and newer.
+* Supported on Node.js 16 and newer.
 * Uses `var`, `let`, `const`, `function`, Array and Object [destructuring assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment).
 * Async-friendly but synchronous methods are available.
 * Can return any valid JS data type (including functions).
