@@ -139,7 +139,7 @@ test("return array", t => {
 
 test("ESM import", async t => {
 	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
-const b = 1;`, null, {
+const b = 1;`, {
 		transformEsmImports: true,
 	});
 	let ret = await vm.getGlobalContext(undefined, {

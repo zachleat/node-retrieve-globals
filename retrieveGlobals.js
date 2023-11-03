@@ -4,12 +4,20 @@ import * as walk from "acorn-walk";
 import { ImportTransformer } from "esm-import-transformer";
 
 class RetrieveGlobals {
-	constructor(code, filePath, options) {
+	constructor(code, options) {
 		this.originalCode = code;
-		this.filePath = filePath;
-		this.options = options || {
+
+		// backwards compat
+		if(typeof options === "string") {
+			options = {
+				filePath: options
+			};
+		}
+
+		this.options = Object.assign({
+			filePath: null,
 			transformEsmImports: false,
-		};
+		}, options);
 
 		// set defaults
 		let acornOptions = {};
@@ -161,8 +169,8 @@ class RetrieveGlobals {
 		} catch(e) {
 			// Acorn parsing error on script
 			let metadata = [];
-			if(this.filePath) {
-				metadata.push(`file: ${this.filePath}`);
+			if(this.options.filePath) {
+				metadata.push(`file: ${this.options.filePath}`);
 			}
 			if(e?.loc?.line) {
 				metadata.push(`line: ${e.loc.line}`);
