@@ -1,5 +1,5 @@
 import test from "ava";
-import { RetrieveGlobals } from "../retrieveGlobals.cjs";
+import { RetrieveGlobals } from "../retrieveGlobals.js";
 
 test("var", t => {
 	let vm = new RetrieveGlobals("var a = 1;");
@@ -135,4 +135,16 @@ test("return array", t => {
 	let globals = vm.getGlobalContextSync();
 	t.true(Array.isArray(globals.b));
 	t.deepEqual(globals.b, [1,2,3]);
+});
+
+test("ESM import", async t => {
+	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
+const b = 1;`, null, {
+		transformEsmImports: true,
+	});
+	let ret = await vm.getGlobalContext(undefined, {
+		dynamicImport: true
+	});
+	t.is(typeof ret.noop, "function");
+	t.is(ret.b, 1);
 });

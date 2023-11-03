@@ -1,21 +1,39 @@
-const vm = require("vm");
-const acorn = require("acorn");
-const walk = require("acorn-walk");
+import vm from "vm";
+import * as acorn from "acorn";
+import * as walk from "acorn-walk";
+import { ImportTransformer } from "esm-import-transformer";
 
 class RetrieveGlobals {
-	constructor(code, filePath) {
-		this.code = code;
+	constructor(code, filePath, options) {
+		this.originalCode = code;
 		this.filePath = filePath;
+		this.options = options || {
+			transformEsmImports: false,
+		};
 
 		// set defaults
-		this.setAcornOptions();
+		let acornOptions = {};
+		if(this.options.transformEsmImports) {
+			acornOptions.sourceType = "module";
+		}
+		this.setAcornOptions(acornOptions);
 		this.setCreateContextOptions();
+
+		// transform `import ___ from ___`
+		// to `const ___ = await import(___)`
+		// to emulate *some* import syntax.
+		// Doesn’t currently work with aliases (mod as name) or namespaced imports (* as name).
+		if(this.options.transformEsmImports) {
+			let it = new ImportTransformer(this.originalCode);
+			this.code = it.transformToDynamicImport();
+		} else {
+			this.code = this.originalCode;
+		}
 	}
 
 	setAcornOptions(acornOptions) {
 		this.acornOptions = Object.assign({
 			ecmaVersion: "latest",
-			// sourceType: "module", node:vm doesn’t support modules yet
 		}, acornOptions );
 	}
 
@@ -108,7 +126,10 @@ class RetrieveGlobals {
 		let globalNames;
 
 		try {
-			parseCode = RetrieveGlobals._getCode(this.code, { async: isAsync });
+			parseCode = RetrieveGlobals._getCode(this.code, {
+				async: isAsync
+			}, this.cache);
+
 			let parsed = acorn.parse(parseCode, this.acornOptions);
 
 			globalNames = new Set();
@@ -157,7 +178,11 @@ ${parseCode}`);
 		}
 
 		try {
-			let execCode = RetrieveGlobals._getCode(this.code, { async: isAsync, globalNames });
+			let execCode = RetrieveGlobals._getCode(this.code, {
+				async: isAsync,
+				globalNames,
+			});
+
 			let execOptions = {};
 
 			if(dynamicImport) {
@@ -197,4 +222,4 @@ ${this.code}`);
 	}
 }
 
-module.exports = { RetrieveGlobals };
+export { RetrieveGlobals };

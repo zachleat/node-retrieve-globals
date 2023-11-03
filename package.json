@@ -3,7 +3,7 @@
   "version": "2.0.8",
   "description": "Execute a string of JavaScript using Node.js and return the global variable values and functions.",
   "type": "module",
-  "main": "retrieveGlobals.cjs",
+  "main": "retrieveGlobals.js",
   "scripts": {
     "test": "npx ava"
   },
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "acorn": "^8.8.2",
-    "acorn-walk": "^8.2.0"
+    "acorn-walk": "^8.2.0",
+    "esm-import-transformer": "^3.0.0"
   }
 }
