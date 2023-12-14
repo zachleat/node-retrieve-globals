@@ -2,7 +2,7 @@ import vm from "vm";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
 import { ImportTransformer } from "esm-import-transformer";
-import { createRequire } from 'module';
+import { createRequire, Module } from "module";
 
 // TODO option to change `require` home base
 const customRequire = createRequire(import.meta.url);
@@ -35,15 +35,18 @@ class RetrieveGlobals {
 		// to `const ___ = await import(___)`
 		// to emulate *some* import syntax.
 		// Doesn’t currently work with aliases (mod as name) or namespaced imports (* as name).
-		if(this.options.transformEsmImports === "require") {
-			let it = new ImportTransformer(this.originalCode);
-			this.code = it.transformToRequire();
-		} else if(this.options.transformEsmImports) {
-			let it = new ImportTransformer(this.originalCode);
-			this.code = it.transformToDynamicImport();
+		if(this.options.transformEsmImports) {
+			this.code = this.transformer.transformToDynamicImport();
 		} else {
 			this.code = this.originalCode;
 		}
+	}
+
+	get transformer() {
+		if(!this._transformer) {
+			this._transformer =  new ImportTransformer(this.originalCode);
+		}
+		return this._transformer;
 	}
 
 	setAcornOptions(acornOptions) {
@@ -106,14 +109,38 @@ class RetrieveGlobals {
 	}
 
 	static _getCode(code, options) {
-		let { async: isAsync, globalNames } = Object.assign({
+		let { async: isAsync, globalNames, experimentalModuleApi, data } = Object.assign({
 			async: true
 		}, options);
 
-		return `(${isAsync ? "async " : ""}function() {
+		let prefix = "";
+		let argKeys = "";
+		let argValues = "";
+
+		// Don’t use this when vm.Module is stable (or if the code doesn’t have any imports!)
+		if(experimentalModuleApi) {
+			prefix = "module.exports = ";
+
+			if(typeof data === "object") {
+				let dataKeys = Object.keys(data);
+				if(dataKeys) {
+					argKeys = `{${dataKeys.join(",")}}`;
+					argValues = JSON.stringify(data, function replacer(key, value) {
+						if(typeof value === "function") {
+							throw new Error(`When using \`experimentalModuleApi\`, context data must be JSON.stringify friendly. The "${key}" property was type \`function\`.`);
+						}
+						return value;
+					});
+				}
+			}
+		}
+
+
+		let finalCode = `${prefix}(${isAsync ? "async " : ""}function(${argKeys}) {
 	${code}
 	${globalNames ? RetrieveGlobals._getGlobalVariablesReturnString(globalNames) : ""}
-})();`;
+})(${argValues});`;
+		return finalCode;
 	}
 
 	_getGlobalContext(data, options) {
@@ -122,13 +149,33 @@ class RetrieveGlobals {
 			reuseGlobal,
 			dynamicImport,
 			addRequire,
+			experimentalModuleApi,
 		} = Object.assign({
 			// defaults
 			async: true,
+
 			reuseGlobal: false,
-			addRequire: false, // added to workaround experimental dynamic import requiring a flag
-			dynamicImport: false, // requires
+
+			// adds support for `require`
+			addRequire: false,
+
+			// allows dynamic import in `vm` (requires --experimental-vm-modules in Node v20.10+)
+			// https://github.com/nodejs/node/issues/51154
+			// TODO Another workaround possibility: We could use `import` outside of `vm` and inject the dependencies into context `data`
+			dynamicImport: false,
+
+			// Use Module._compile instead of vm
+			// Workaround for: https://github.com/zachleat/node-retrieve-globals/issues/2
+			// Warning: This method requires input `data` to be JSON stringify friendly.
+			// Only use this if the code has `import`:
+			experimentalModuleApi: this.transformer.hasImports(),
 		}, options);
+
+		// these things are already supported by Module._compile
+		if(experimentalModuleApi) {
+			addRequire = false;
+			dynamicImport = false;
+		}
 
 		if(reuseGlobal || addRequire) {
 			// Re-use the parent `global` https://nodejs.org/api/globals.html
@@ -141,7 +188,7 @@ class RetrieveGlobals {
 		}
 
 		let context;
-		if(vm.isContext(data)) {
+		if(experimentalModuleApi || vm.isContext(data)) {
 			context = data;
 		} else {
 			context = vm.createContext(data, this.createContextOptions);
@@ -152,7 +199,7 @@ class RetrieveGlobals {
 
 		try {
 			parseCode = RetrieveGlobals._getCode(this.code, {
-				async: isAsync
+				async: isAsync,
 			}, this.cache);
 
 			let parsed = acorn.parse(parseCode, this.acornOptions);
@@ -206,6 +253,8 @@ ${parseCode}`);
 			let execCode = RetrieveGlobals._getCode(this.code, {
 				async: isAsync,
 				globalNames,
+				experimentalModuleApi,
+				data: context,
 			});
 
 			let execOptions = {};
@@ -217,6 +266,11 @@ ${parseCode}`);
 				};
 			}
 
+			if(experimentalModuleApi) {
+				let m = new Module();
+				m._compile(execCode, import.meta.url);
+				return m.exports;
+			}
 			return vm.runInContext(execCode, context, execOptions);
 		} catch(e) {
 			throw new Error(`Had trouble executing script in Node:

@@ -138,7 +138,8 @@ const b = 1;`);
 	t.is(ret.b, 1);
 });
 
-test("dynamic import (no code transformation) (requires --experimental-vm-modules in Node v20.10)", async t => {
+// TODO we detect `await import()` and use `experimentalModuleApi: true`
+test.skip("dynamic import (no code transformation) (requires --experimental-vm-modules in Node v20.10)", async t => {
 	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
 	let ret = await vm.getGlobalContext(undefined, {
 		dynamicImport: true
@@ -146,33 +147,86 @@ test("dynamic import (no code transformation) (requires --experimental-vm-module
 	t.is(typeof ret.noop, "function");
 });
 
-test("ESM import (requires --experimental-vm-modules in Node v20.10)", async t => {
+test("dynamic import (no code transformation) (experimentalModuleApi explicit true)", async t => {
+	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
+	let ret = await vm.getGlobalContext(undefined, {
+		experimentalModuleApi: true, // Needs to be true here because there are no top level `import`
+	});
+	t.is(typeof ret.noop, "function");
+});
+
+// This would require --experimental-vm-modules in Node v20.10, but instead falls back to `experimentalModuleApi` automatically
+test("ESM import", async t => {
 	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
 const b = 1;`, {
 		transformEsmImports: true,
 	});
 	let ret = await vm.getGlobalContext(undefined, {
+		// experimentalModuleApi: true, // implied
 		dynamicImport: true,
 	});
 	t.is(typeof ret.noop, "function");
 	t.is(ret.b, 1);
 });
 
-test("ESM import (fallback to `require`)", async t => {
+// This would require --experimental-vm-modules in Node v20.10, but instead falls back to `experimentalModuleApi` automatically
+test("ESM import (experimentalModuleApi implied true)", async t => {
 	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
 const b = 1;`, {
-		transformEsmImports: "require",
+		transformEsmImports: true,
 	});
-
 	let ret = await vm.getGlobalContext(undefined, {
-		addRequire: true,
+		// experimentalModuleApi: true,
 	});
-
 	t.is(typeof ret.noop, "function");
 	t.is(ret.b, 1);
 });
 
-// test("__filename", t => {
-// 	let vm = new RetrieveGlobals("var b = __filename;");
-// 	t.deepEqual(vm.getGlobalContextSync({}, { reuseGlobal: true }), { b: __filename });
-// });
+// This would require --experimental-vm-modules in Node v20.10, but instead falls back to `experimentalModuleApi` automatically
+test("ESM import (experimentalModuleApi explicit true)", async t => {
+	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
+const b = 1;`, {
+		transformEsmImports: true,
+	});
+	let ret = await vm.getGlobalContext(undefined, {
+		experimentalModuleApi: true,
+	});
+	t.is(typeof ret.noop, "function");
+	t.is(ret.b, 1);
+});
+
+// This does not require --experimental-vm-modules in Node v20.10+ as it has no imports
+test("No imports, with data", async t => {
+	let vm = new RetrieveGlobals(`const b = inputData;`, {
+		transformEsmImports: true,
+	});
+	let ret = await vm.getGlobalContext({ inputData: "hi" }, {
+		// experimentalModuleApi: true, // implied false
+	});
+
+	t.is(ret.b, "hi");
+});
+
+// This does not require --experimental-vm-modules in Node v20.10+ as it has no imports
+test("No imports, with JSON unfriendly data", async t => {
+	let vm = new RetrieveGlobals(`const b = fn;`, {
+		transformEsmImports: true,
+	});
+	let ret = await vm.getGlobalContext({ fn: function() {} }, {
+		// experimentalModuleApi: true, // implied false
+	});
+	t.is(typeof ret.b, "function");
+});
+
+// This requires --experimental-vm-modules in Node v20.10+ and uses the experimentalModuleApi because it has imports
+test("With imports, with JSON unfriendly data", async t => {
+	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
+const b = fn;`, {
+		transformEsmImports: true,
+	});
+	await t.throwsAsync(async () => {
+		let ret = await vm.getGlobalContext({ fn: function() {} }, {
+			// experimentalModuleApi: true, // implied true
+		});
+	});
+});
