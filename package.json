@@ -5,7 +5,8 @@
   "type": "module",
   "main": "retrieveGlobals.js",
   "scripts": {
-    "test": "NODE_OPTIONS='--experimental-vm-modules' npx ava"
+    "test": "npx ava",
+    "test-experimental": "NODE_OPTIONS='--experimental-vm-modules' npx ava"
   },
   "repository": {
     "type": "git",
