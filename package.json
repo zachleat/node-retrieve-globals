@@ -1,12 +1,11 @@
 {
   "name": "node-retrieve-globals",
-  "version": "3.0.1",
+  "version": "4.0.0",
   "description": "Execute a string of JavaScript using Node.js and return the global variable values and functions.",
   "type": "module",
   "main": "retrieveGlobals.js",
   "scripts": {
-    "test": "npx ava",
-    "test-experimental": "NODE_OPTIONS='--experimental-vm-modules' npx ava"
+    "test": "npx ava"
   },
   "repository": {
     "type": "git",
