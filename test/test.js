@@ -137,6 +137,16 @@ test("return array", t => {
 	t.deepEqual(globals.b, [1,2,3]);
 });
 
+test("`require` Compatibility", async t => {
+	let vm = new RetrieveGlobals(`const { noop } = require("@zachleat/noop");
+const b = 1;`);
+	let ret = await vm.getGlobalContext(undefined, {
+		addRequire: true,
+	});
+	t.is(typeof ret.noop, "function");
+	t.is(ret.b, 1);
+});
+
 test("ESM import", async t => {
 	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
 const b = 1;`, {

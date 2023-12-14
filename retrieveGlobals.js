@@ -2,6 +2,10 @@ import vm from "vm";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
 import { ImportTransformer } from "esm-import-transformer";
+import { createRequire } from 'module';
+
+// TODO option to change `require` home base
+const customRequire = createRequire(import.meta.url);
 
 class RetrieveGlobals {
 	constructor(code, options) {
@@ -54,15 +58,19 @@ class RetrieveGlobals {
 		}, contextOptions );
 	}
 
-	static _getProxiedContext(context = {}) {
+	static _getProxiedContext(context = {}, options = {}) {
 		return new Proxy(context, {
 			get(target, propertyName) {
 				if(Reflect.has(target, propertyName)) {
 					return Reflect.get(target, propertyName);
 				}
 
-				// Re-use the parent `global` https://nodejs.org/api/globals.html
-				return global[propertyName] || undefined;
+				if(options.reuseGlobal && Reflect.has(global, propertyName)) {
+					return global[propertyName];
+				}
+				if(options.addRequire && propertyName === "require") {
+					return customRequire;
+				}
 			}
 		});
 	}
@@ -110,15 +118,21 @@ class RetrieveGlobals {
 			async: isAsync,
 			reuseGlobal,
 			dynamicImport,
+			addRequire,
 		} = Object.assign({
 			// defaults
 			async: true,
 			reuseGlobal: false,
-			dynamicImport: false,
+			addRequire: false, // added to workaround experimental dynamic import requiring a flag
+			dynamicImport: false, // requires
 		}, options);
 
-		if(reuseGlobal) {
-			data = RetrieveGlobals._getProxiedContext(data || {});
+		if(reuseGlobal || addRequire) {
+			// Re-use the parent `global` https://nodejs.org/api/globals.html
+			data = RetrieveGlobals._getProxiedContext(data || {}, {
+				reuseGlobal,
+				addRequire,
+			});
 		} else {
 			data = data || {};
 		}
