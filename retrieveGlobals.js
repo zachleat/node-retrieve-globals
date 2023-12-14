@@ -35,7 +35,10 @@ class RetrieveGlobals {
 		// to `const ___ = await import(___)`
 		// to emulate *some* import syntax.
 		// Doesn’t currently work with aliases (mod as name) or namespaced imports (* as name).
-		if(this.options.transformEsmImports) {
+		if(this.options.transformEsmImports === "require") {
+			let it = new ImportTransformer(this.originalCode);
+			this.code = it.transformToRequire();
+		} else if(this.options.transformEsmImports) {
 			let it = new ImportTransformer(this.originalCode);
 			this.code = it.transformToDynamicImport();
 		} else {

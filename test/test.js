@@ -100,15 +100,6 @@ test("destructured assignment via Array", async t => {
 	t.is(ret.b, 2);
 });
 
-
-test("dynamic import", async t => {
-	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
-	let ret = await vm.getGlobalContext(undefined, {
-		dynamicImport: true
-	});
-	t.is(typeof ret.noop, "function");
-});
-
 test("global: same console.log", async t => {
 	let vm = new RetrieveGlobals(`const b = console.log`);
 	let ret = await vm.getGlobalContext(undefined, {
@@ -147,14 +138,41 @@ const b = 1;`);
 	t.is(ret.b, 1);
 });
 
-test("ESM import", async t => {
+test("dynamic import (no code transformation) (requires --experimental-vm-modules in Node v20.10)", async t => {
+	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
+	let ret = await vm.getGlobalContext(undefined, {
+		dynamicImport: true
+	});
+	t.is(typeof ret.noop, "function");
+});
+
+test("ESM import (requires --experimental-vm-modules in Node v20.10)", async t => {
 	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
 const b = 1;`, {
 		transformEsmImports: true,
 	});
 	let ret = await vm.getGlobalContext(undefined, {
-		dynamicImport: true
+		dynamicImport: true,
 	});
 	t.is(typeof ret.noop, "function");
 	t.is(ret.b, 1);
 });
+
+test("ESM import (fallback to `require`)", async t => {
+	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
+const b = 1;`, {
+		transformEsmImports: "require",
+	});
+
+	let ret = await vm.getGlobalContext(undefined, {
+		addRequire: true,
+	});
+
+	t.is(typeof ret.noop, "function");
+	t.is(ret.b, 1);
+});
+
+// test("__filename", t => {
+// 	let vm = new RetrieveGlobals("var b = __filename;");
+// 	t.deepEqual(vm.getGlobalContextSync({}, { reuseGlobal: true }), { b: __filename });
+// });
