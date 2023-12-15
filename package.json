@@ -5,7 +5,7 @@
   "type": "module",
   "main": "retrieveGlobals.js",
   "scripts": {
-    "test": "npx ava && NODE_OPTIONS='--experimental-vm-modules' npx ava"
+    "test": "npx ava && cross-env NODE_OPTIONS='--experimental-vm-modules' npx ava"
   },
   "repository": {
     "type": "git",
@@ -19,11 +19,12 @@
   "license": "MIT",
   "devDependencies": {
     "@zachleat/noop": "^1.0.3",
-    "ava": "^5.2.0"
+    "ava": "^6.0.1",
+    "cross-env": "^7.0.3"
   },
   "dependencies": {
     "acorn": "^8.8.2",
-    "acorn-walk": "^8.2.0",
+    "acorn-walk": "^8.3.1",
     "esm-import-transformer": "^3.0.2"
   }
 }
