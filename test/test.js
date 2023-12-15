@@ -1,12 +1,15 @@
 import test from "ava";
 import { RetrieveGlobals } from "../retrieveGlobals.js";
+import { isSupported } from "../vmModules.js";
 
-test("var", t => {
-	let vm = new RetrieveGlobals("var a = 1;");
-	t.deepEqual(vm.getGlobalContextSync(), { a: 1 });
+const IS_VM_MODULES_SUPPORTED = isSupported();
+
+test("var", async t => {
+	let vm = new RetrieveGlobals(`var a = 1;`);
+	t.deepEqual(await vm.getGlobalContext(), { a: 1 });
 });
 
-test("isPlainObject", t => {
+test("isPlainObject", async t => {
 	// from eleventy-utils
 	function isPlainObject(value) {
 		if (value === null || typeof value !== "object") {
@@ -17,10 +20,10 @@ test("isPlainObject", t => {
 	};
 
 	let vm = new RetrieveGlobals("var a = 1;");
-	t.true(isPlainObject(vm.getGlobalContextSync()));
+	t.true(isPlainObject(await vm.getGlobalContext()));
 });
 
-test("isPlainObject deep", t => {
+test("isPlainObject deep", async t => {
 	// from eleventy-utils
 	function isPlainObject(value) {
 		if (value === null || typeof value !== "object") {
@@ -31,12 +34,12 @@ test("isPlainObject deep", t => {
 	};
 
 	let vm = new RetrieveGlobals("var a = { b: 1, c: { d: {} } };");
-	let obj = vm.getGlobalContextSync();
+	let obj = await vm.getGlobalContext();
 	t.true(isPlainObject(obj.a.c));
 	t.true(isPlainObject(obj.a.c.d));
 });
 
-test("isPlainObject deep circular", t => {
+test("isPlainObject deep circular", async t => {
 	// from eleventy-utils
 	function isPlainObject(value) {
 		if (value === null || typeof value !== "object") {
@@ -51,30 +54,30 @@ var a = { a: 1 };
 var b = { b: a };
 a.b = b;
 `);
-	let obj = vm.getGlobalContextSync();
+	let obj = await vm.getGlobalContext();
 	t.true(isPlainObject(obj.a.b));
 	t.true(isPlainObject(obj.b.b));
 });
 
 
-test("var with data", t => {
+test("var with data", async t => {
 	let vm = new RetrieveGlobals("var a = b;");
-	t.deepEqual(vm.getGlobalContextSync({ b: 2 }), { a: 2 });
+	t.deepEqual(await vm.getGlobalContext({ b: 2 }), { a: 2 });
 });
 
-test("let with data", t => {
+test("let with data", async t => {
 	let vm = new RetrieveGlobals("let a = b;");
-	t.deepEqual(vm.getGlobalContextSync({ b: 2 }), { a: 2 });
+	t.deepEqual(await vm.getGlobalContext({ b: 2 }), { a: 2 });
 });
 
-test("const with data", t => {
+test("const with data", async t => {
 	let vm = new RetrieveGlobals("const a = b;");
-	t.deepEqual(vm.getGlobalContextSync({ b: 2 }), { a: 2 });
+	t.deepEqual(await vm.getGlobalContext({ b: 2 }), { a: 2 });
 });
 
-test("function", t => {
+test("function", async t => {
 	let vm = new RetrieveGlobals("function testFunction() {}");
-	let ret = vm.getGlobalContextSync();
+	let ret = await vm.getGlobalContext();
 	t.true(typeof ret.testFunction === "function");
 });
 
@@ -114,16 +117,16 @@ test("global: same console.log", async t => {
 });
 
 test("global: Same URL", async t => {
-	let vm = new RetrieveGlobals(`const b = URL`);
+	let vm = new RetrieveGlobals(`const b = URL;`);
 	let ret = await vm.getGlobalContext(undefined, {
 		reuseGlobal: true
 	});
 	t.is(ret.b, URL);
 });
 
-test("return array", t => {
+test("return array", async t => {
 	let vm = new RetrieveGlobals("let b = [1,2,3];");
-	let globals = vm.getGlobalContextSync();
+	let globals = await vm.getGlobalContext();
 	t.true(Array.isArray(globals.b));
 	t.deepEqual(globals.b, [1,2,3]);
 });
@@ -138,18 +141,21 @@ const b = 1;`);
 	t.is(ret.b, 1);
 });
 
-// TODO we detect `await import()` and use `experimentalModuleApi: true`
-test.skip("dynamic import (no code transformation) (requires --experimental-vm-modules in Node v20.10)", async t => {
-	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
-	let ret = await vm.getGlobalContext(undefined, {
-		dynamicImport: true
+// Works with --experimental-vm-modules, remove this when modules are stable
+if(IS_VM_MODULES_SUPPORTED) {
+	test("dynamic import (no code transformation) (requires --experimental-vm-modules in Node v20.10)", async t => {
+		let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
+		let ret = await vm.getGlobalContext(undefined, {
+			dynamicImport: true
+		});
+		t.is(typeof ret.noop, "function");
 	});
-	t.is(typeof ret.noop, "function");
-});
+}
 
 test("dynamic import (no code transformation) (experimentalModuleApi explicit true)", async t => {
 	let vm = new RetrieveGlobals(`const { noop } = await import("@zachleat/noop");`);
 	let ret = await vm.getGlobalContext(undefined, {
+		dynamicImport: true, // irrelevant for fallback case, important for --experimental-vm-modules support case
 		experimentalModuleApi: true, // Needs to be true here because there are no top level `import`
 	});
 	t.is(typeof ret.noop, "function");
@@ -184,12 +190,13 @@ const b = 1;`, {
 
 // This would require --experimental-vm-modules in Node v20.10, but instead falls back to `experimentalModuleApi` automatically
 test("ESM import (experimentalModuleApi explicit true)", async t => {
+	// let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
 	let vm = new RetrieveGlobals(`import { noop } from "@zachleat/noop";
 const b = 1;`, {
-		transformEsmImports: true,
+		transformEsmImports: true, // overridden to false when --experimental-vm-modules
 	});
 	let ret = await vm.getGlobalContext(undefined, {
-		experimentalModuleApi: true,
+		experimentalModuleApi: true, // overridden to false when --experimental-vm-modules
 	});
 	t.is(typeof ret.noop, "function");
 	t.is(ret.b, 1);
@@ -224,9 +231,30 @@ test("With imports, with JSON unfriendly data", async t => {
 const b = fn;`, {
 		transformEsmImports: true,
 	});
-	await t.throwsAsync(async () => {
+
+	if(IS_VM_MODULES_SUPPORTED) {
+		// Works fine with --experimental-vm-modules
 		let ret = await vm.getGlobalContext({ fn: function() {} }, {
-			// experimentalModuleApi: true, // implied true
+			// experimentalModuleApi: true, // implied false
 		});
-	});
+		t.is(typeof ret.b, "function");
+	} else {
+		// This throws if --experimental-vm-modules not set
+		await t.throwsAsync(async () => {
+			let ret = await vm.getGlobalContext({ fn: function() {} }, {
+				// experimentalModuleApi: true, // implied true
+			});
+		});
+	}
 });
+
+if(IS_VM_MODULES_SUPPORTED) {
+	test("import.meta.url works", async t => {
+		let vm = new RetrieveGlobals(`const b = import.meta.url;`, {
+			filePath: import.meta.url
+		});
+
+		let ret = await vm.getGlobalContext();
+		t.is(ret.b, import.meta.url);
+	});
+}

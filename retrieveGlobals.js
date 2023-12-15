@@ -4,7 +4,11 @@ import * as walk from "acorn-walk";
 import { ImportTransformer } from "esm-import-transformer";
 import { createRequire, Module } from "module";
 
-// TODO option to change `require` home base
+import { isSupported } from "./vmModules.js";
+
+const IS_VM_MODULES_SUPPORTED = isSupported();
+
+// TODO (feature) option to change `require` home base
 const customRequire = createRequire(import.meta.url);
 
 class RetrieveGlobals {
@@ -23,17 +27,21 @@ class RetrieveGlobals {
 			transformEsmImports: false,
 		}, options);
 
+		if(IS_VM_MODULES_SUPPORTED) {
+			// Override: no code transformations if vm.Module works
+			this.options.transformEsmImports = false;
+		}
+
 		// set defaults
 		let acornOptions = {};
-		if(this.options.transformEsmImports) {
+		if(IS_VM_MODULES_SUPPORTED || this.options.transformEsmImports) {
 			acornOptions.sourceType = "module";
 		}
+
 		this.setAcornOptions(acornOptions);
 		this.setCreateContextOptions();
 
-		// transform `import ___ from ___`
-		// to `const ___ = await import(___)`
-		// to emulate *some* import syntax.
+		// transform `import ___ from ___` to `const ___ = await import(___)` to emulate *some* import syntax.
 		// Doesn’t currently work with aliases (mod as name) or namespaced imports (* as name).
 		if(this.options.transformEsmImports) {
 			this.code = this.transformer.transformToDynamicImport();
@@ -83,12 +91,12 @@ class RetrieveGlobals {
 
 	// We prune function and variable declarations that aren’t globally declared
 	// (our acorn walker could be improved to skip non-global declarations, but this method is easier for now)
-	static _getGlobalVariablesReturnString(names) {
-		let s = [`let globals = {};`];
+	static _getGlobalVariablesReturnString(names, mode = "cjs") {
+		let s = [`let __globals = {};`];
 		for(let name of names) {
-			s.push(`if( typeof ${name} !== "undefined") { globals.${name} = ${name}; }`);
+			s.push(`if( typeof ${name} !== "undefined") { __globals.${name} = ${name}; }`);
 		}
-		return `${s.join("\n")}; return globals;`
+		return `${s.join("\n")};${mode === "esm" ? "\nexport default __globals;" : "return __globals;"}`
 	}
 
 	_setContextPrototype(context) {
@@ -108,12 +116,18 @@ class RetrieveGlobals {
 		}
 	}
 
-	static _getCode(code, options) {
+	_getCode(code, options) {
 		let { async: isAsync, globalNames, experimentalModuleApi, data } = Object.assign({
 			async: true
 		}, options);
 
-		let prefix = "";
+		if(IS_VM_MODULES_SUPPORTED) {
+			return `${code}
+
+${globalNames ? RetrieveGlobals._getGlobalVariablesReturnString(globalNames, "esm") : ""}`;
+		}
+
+		let prefix = [];
 		let argKeys = "";
 		let argValues = "";
 
@@ -135,15 +149,69 @@ class RetrieveGlobals {
 			}
 		}
 
-
-		let finalCode = `${prefix}(${isAsync ? "async " : ""}function(${argKeys}) {
+		return `${prefix}(${isAsync ? "async " : ""}function(${argKeys}) {
 	${code}
-	${globalNames ? RetrieveGlobals._getGlobalVariablesReturnString(globalNames) : ""}
+	${globalNames ? RetrieveGlobals._getGlobalVariablesReturnString(globalNames, "cjs") : ""}
 })(${argValues});`;
-		return finalCode;
 	}
 
-	_getGlobalContext(data, options) {
+	getGlobalNames(parsedAst) {
+		let globalNames = new Set();
+
+		let types = {
+			FunctionDeclaration(node) {
+				globalNames.add(node.id.name);
+			},
+			VariableDeclarator(node) {
+				// destructuring assignment Array
+				if(node.id.type === "ArrayPattern") {
+					for(let prop of node.id.elements) {
+						if(prop.type === "Identifier") {
+							globalNames.add(prop.name);
+						}
+					}
+				} else if(node.id.type === "ObjectPattern") {
+					// destructuring assignment Object
+					for(let prop of node.id.properties) {
+						if(prop.type === "Property") {
+							globalNames.add(prop.value.name);
+						}
+					}
+				} else if(node.id.name) {
+					globalNames.add(node.id.name);
+				}
+			},
+			// if imports aren’t being transformed to variables assignment, we need those too
+			ImportSpecifier(node) {
+				globalNames.add(node.imported.name);
+			}
+		};
+
+		walk.simple(parsedAst, types);
+
+		return globalNames;
+	}
+
+	_getParseError(code, err) {
+		// Acorn parsing error on script
+		let metadata = [];
+		if(this.options.filePath) {
+			metadata.push(`file: ${this.options.filePath}`);
+		}
+		if(err?.loc?.line) {
+			metadata.push(`line: ${err.loc.line}`);
+		}
+		if(err?.loc?.column) {
+			metadata.push(`column: ${err.loc.column}`);
+		}
+
+		return new Error(`Had trouble parsing with "acorn"${metadata.length ? ` (${metadata.join(", ")})` : ""}:
+Message: ${err.message}
+
+${code}`);
+	}
+
+	async _getGlobalContext(data, options) {
 		let {
 			async: isAsync,
 			reuseGlobal,
@@ -167,11 +235,17 @@ class RetrieveGlobals {
 			// Use Module._compile instead of vm
 			// Workaround for: https://github.com/zachleat/node-retrieve-globals/issues/2
 			// Warning: This method requires input `data` to be JSON stringify friendly.
-			// Only use this if the code has `import`:
-			experimentalModuleApi: this.transformer.hasImports(),
+			// Don’t use this if vm.Module is supported
+			// Don’t use this if the code does not contain `import`s
+			experimentalModuleApi: !IS_VM_MODULES_SUPPORTED && this.transformer.hasImports(),
 		}, options);
 
-		// these things are already supported by Module._compile
+		if(IS_VM_MODULES_SUPPORTED) {
+			// Override: don’t use this when modules are allowed.
+			experimentalModuleApi = false;
+		}
+
+		// These options are already supported by Module._compile
 		if(experimentalModuleApi) {
 			addRequire = false;
 			dynamicImport = false;
@@ -183,8 +257,10 @@ class RetrieveGlobals {
 				reuseGlobal,
 				addRequire,
 			});
-		} else {
-			data = data || {};
+		}
+
+		if(!data) {
+			data = {};
 		}
 
 		let context;
@@ -198,67 +274,31 @@ class RetrieveGlobals {
 		let globalNames;
 
 		try {
-			parseCode = RetrieveGlobals._getCode(this.code, {
+			parseCode = this._getCode(this.code, {
 				async: isAsync,
-			}, this.cache);
-
-			let parsed = acorn.parse(parseCode, this.acornOptions);
-
-			globalNames = new Set();
-
-			walk.simple(parsed, {
-				FunctionDeclaration(node) {
-					globalNames.add(node.id.name);
-				},
-				VariableDeclarator(node) {
-					// destructuring assignment Array
-					if(node.id.type === "ArrayPattern") {
-						for(let prop of node.id.elements) {
-							if(prop.type === "Identifier") {
-								globalNames.add(prop.name);
-							}
-						}
-					} else if(node.id.type === "ObjectPattern") {
-						// destructuring assignment Object
-						for(let prop of node.id.properties) {
-							if(prop.type === "Property") {
-								globalNames.add(prop.value.name);
-							}
-						}
-					} else if(node.id.name) {
-						globalNames.add(node.id.name);
-					}
-				}
 			});
+
+			let parsedAst = acorn.parse(parseCode, this.acornOptions);
+			globalNames = this.getGlobalNames(parsedAst);
 		} catch(e) {
-			// Acorn parsing error on script
-			let metadata = [];
-			if(this.options.filePath) {
-				metadata.push(`file: ${this.options.filePath}`);
-			}
-			if(e?.loc?.line) {
-				metadata.push(`line: ${e.loc.line}`);
-			}
-			if(e?.loc?.column) {
-				metadata.push(`column: ${e.loc.column}`);
-			}
-
-			throw new Error(`Had trouble parsing with "acorn"${metadata.length ? ` (${metadata.join(", ")})` : ""}:
-Message: ${e.message}
-
-${parseCode}`);
+			throw this._getParseError(parseCode, e);
 		}
 
 		try {
-			let execCode = RetrieveGlobals._getCode(this.code, {
+			let execCode = this._getCode(this.code, {
 				async: isAsync,
 				globalNames,
 				experimentalModuleApi,
 				data: context,
 			});
 
-			let execOptions = {};
+			if(experimentalModuleApi) {
+				let m = new Module();
+				m._compile(execCode, import.meta.url);
+				return m.exports;
+			}
 
+			let execOptions = {};
 			if(dynamicImport) {
 				// Warning: this option is part of the experimental modules API
 				execOptions.importModuleDynamically = function(specifier) {
@@ -266,32 +306,60 @@ ${parseCode}`);
 				};
 			}
 
-			if(experimentalModuleApi) {
-				let m = new Module();
-				m._compile(execCode, import.meta.url);
-				return m.exports;
+			if(IS_VM_MODULES_SUPPORTED) {
+				// options.initializeImportMeta
+				let m = new vm.SourceTextModule(execCode, {
+					context,
+					initializeImportMeta: (meta, module) => {
+						meta.url = this.options.filePath || module.identifier;
+					},
+					...execOptions,
+				});
+
+				// Thank you! https://stackoverflow.com/a/73282303/16711
+				await m.link(async (specifier, referencingModule) => {
+					const mod = await import(specifier);
+					const exportNames = Object.keys(mod);
+					return new vm.SyntheticModule(
+						exportNames,
+						function () {
+							exportNames.forEach(key => {
+								this.setExport(key, mod[key])
+							});
+						},
+						{
+							identifier: specifier,
+							context: referencingModule.context
+						}
+					);
+				});
+
+				await m.evaluate();
+
+				// TODO (feature) incorporate other esm `exports` here
+				return m.namespace.default;
 			}
+
 			return vm.runInContext(execCode, context, execOptions);
 		} catch(e) {
-			throw new Error(`Had trouble executing script in Node:
+			let type = "cjs";
+			if(IS_VM_MODULES_SUPPORTED) {
+				type = "esm";
+			} else if(experimentalModuleApi) {
+				type = "cjs-experimental";
+			}
+
+			throw new Error(`Had trouble executing Node script (type: ${type}):
 Message: ${e.message}
 
 ${this.code}`);
 		}
 	}
 
-	getGlobalContextSync(data, options) {
-		let ret = this._getGlobalContext(data, Object.assign({
-			async: false,
-		}, options));
-
-		this._setContextPrototype(ret);
-
-		return ret;
-	}
-
 	async getGlobalContext(data, options) {
 		let ret = await this._getGlobalContext(data, Object.assign({
+			// whether or not the target code is executed asynchronously
+			// note that vm.Module will always be async-friendly
 			async: true,
 		}, options));
 
