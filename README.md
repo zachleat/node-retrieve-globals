@@ -31,7 +31,7 @@ Works from Node.js with ESM and CommonJS:
 
 ```js
 import { RetrieveGlobals } from "node-retrieve-globals";
-// const { RetrieveGlobals } = require("node-retrieve-globals");
+// const { RetrieveGlobals } = await import("node-retrieve-globals");
 ```
 
 And then:
@@ -81,4 +81,10 @@ let options = {
 };
 
 await vm.getGlobalContext({}, options);
+```
 
+## Changelog
+
+* `v5.0.0` Removes sync API, swap to async-only. Better compatibility with `--experimental-vm-modules` Node flag.
+* `v4.0.0` Swap to use `Module._compile` as a workaround for #2 (Node regression with experimental modules API in Node v20.10+)
+* `v3.0.0` ESM-only package. Node 16+
