@@ -85,6 +85,7 @@ await vm.getGlobalContext({}, options);
 
 ## Changelog
 
+* `v6.0.0` Changes `import` and `require` to be project relative (not relative to this package on the file system).
 * `v5.0.0` Removes sync API, swap to async-only. Better compatibility with `--experimental-vm-modules` Node flag.
 * `v4.0.0` Swap to use `Module._compile` as a workaround for #2 (Node regression with experimental modules API in Node v20.10+)
 * `v3.0.0` ESM-only package. Node 16+
