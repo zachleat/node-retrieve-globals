@@ -313,10 +313,15 @@ ${code}`);
 
 			let execOptions = {};
 			if(dynamicImport) {
-				// Warning: this option is part of the experimental modules API
-				execOptions.importModuleDynamically = function(specifier) {
-					return import(specifier);
-				};
+				// Node 21.7+ via https://github.com/nodejs/node/issues/51154
+				if(vm?.constants?.USE_MAIN_CONTEXT_DEFAULT_LOADER) {
+					execOptions.importModuleDynamically = vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER;
+				} else {
+					// Warning: this option is part of the experimental modules API
+					execOptions.importModuleDynamically = function(specifier) {
+						return import(specifier);
+					};
+				}
 			}
 
 			if(IS_VM_MODULES_SUPPORTED) {

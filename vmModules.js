@@ -15,9 +15,7 @@ function isSupported() {
 	try {
 		new vm.SourceTextModule(`/* hi */`);
 		return true;
-	} catch(e) {
-		return false;
-	}
+	} catch(e) {}
 
 	return false;
 }
