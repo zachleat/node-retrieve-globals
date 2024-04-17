@@ -1,6 +1,7 @@
 import test from "ava";
 import { RetrieveGlobals } from "../retrieveGlobals.js";
-import { isSupported } from "../vmModules.js";
+import { isSupported } from "../util/vmModules.js";
+import { getWorkingDirectory } from "../util/getWorkingDirectory.js";
 
 const IS_VM_MODULES_SUPPORTED = isSupported();
 
@@ -256,5 +257,14 @@ if(IS_VM_MODULES_SUPPORTED) {
 
 		let ret = await vm.getGlobalContext();
 		t.is(ret.b, import.meta.url);
+	});
+
+	test("import.meta.url has the current working directory (if not passed via filePath)", async t => {
+		let vm = new RetrieveGlobals(`const b = import.meta.url;`, {
+			// filePath: import.meta.url
+		});
+
+		let ret = await vm.getGlobalContext();
+		t.is(ret.b, getWorkingDirectory());
 	});
 }

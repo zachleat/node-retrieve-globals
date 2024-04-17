@@ -1,28 +1,19 @@
 import vm from "vm";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
 import { ImportTransformer } from "esm-import-transformer";
 import { createRequire, Module } from "module";
 
-import { isSupported } from "./vmModules.js";
+import { getWorkingDirectory } from "./util/getWorkingDirectory.js";
+import { isSupported } from "./util/vmModules.js";
 
 const IS_VM_MODULES_SUPPORTED = isSupported();
 
-function addTrailingSlash(path) {
-	if(path.endsWith("/")) {
-		return path;
-	}
-	return path + "/";
-}
-
-// Trailing slash required
 // `import` and `require` should both be relative to working directory (not this file)
-const workingDirectory = addTrailingSlash(pathToFileURL(path.resolve(".")).toString());
+const WORKING_DIRECTORY = getWorkingDirectory();
 
 // TODO (feature) option to change `require` home base
-const customRequire = createRequire(workingDirectory);
+const customRequire = createRequire(WORKING_DIRECTORY);
 
 class RetrieveGlobals {
 	constructor(code, options) {
@@ -307,16 +298,14 @@ ${code}`);
 
 			if(experimentalModuleApi) {
 				let m = new Module();
-				m._compile(execCode, workingDirectory);
+				m._compile(execCode, WORKING_DIRECTORY);
 				return m.exports;
 			}
 
 			let execOptions = {};
 			if(dynamicImport) {
 				// Warning: this option is part of the experimental modules API
-				execOptions.importModuleDynamically = function(specifier) {
-					return import(specifier);
-				};
+				execOptions.importModuleDynamically = (specifier) => import(specifier);
 			}
 
 			if(IS_VM_MODULES_SUPPORTED) {
@@ -324,7 +313,7 @@ ${code}`);
 				let m = new vm.SourceTextModule(execCode, {
 					context,
 					initializeImportMeta: (meta, module) => {
-						meta.url = this.options.filePath || module.identifier;
+						meta.url = this.options.filePath || WORKING_DIRECTORY || module.identifier;
 					},
 					...execOptions,
 				});
