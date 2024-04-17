@@ -1,4 +1,6 @@
 import vm from "vm";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
 import { ImportTransformer } from "esm-import-transformer";
@@ -8,8 +10,19 @@ import { isSupported } from "./vmModules.js";
 
 const IS_VM_MODULES_SUPPORTED = isSupported();
 
+function addTrailingSlash(path) {
+	if(path.endsWith("/")) {
+		return path;
+	}
+	return path + "/";
+}
+
+// Trailing slash required
+// `import` and `require` should both be relative to working directory (not this file)
+const workingDirectory = addTrailingSlash(pathToFileURL(path.resolve(".")).toString());
+
 // TODO (feature) option to change `require` home base
-const customRequire = createRequire(import.meta.url);
+const customRequire = createRequire(workingDirectory);
 
 class RetrieveGlobals {
 	constructor(code, options) {
@@ -294,7 +307,7 @@ ${code}`);
 
 			if(experimentalModuleApi) {
 				let m = new Module();
-				m._compile(execCode, import.meta.url);
+				m._compile(execCode, workingDirectory);
 				return m.exports;
 			}
 
