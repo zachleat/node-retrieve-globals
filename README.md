@@ -15,7 +15,7 @@ Execute a string of JavaScript using Node.js and return the global variable valu
 	* Future-friendly feature tests for when `vm.Module` is stable and `--experimental-vm-modules` is no longer necessary. _(v5.0.0 and newer)_
 * In use on:
 	* [JavaScript in Eleventy Front Matter](https://www.11ty.dev/docs/data-frontmatter-customize/#example-use-javascript-in-your-front-matter) (and [Demo](https://github.com/11ty/demo-eleventy-js-front-matter))
-	* [WebC’s `<script webc:setup>`](https://www.11ty.dev/docs/languages/webc/#using-javascript-to-setup-your-component)
+	* [WebC’s `<script webc:setup>`](https://www.11ty.dev/docs/languages/webc/#using-java-script-to-setup-your-component)
 
 ## Installation
 
