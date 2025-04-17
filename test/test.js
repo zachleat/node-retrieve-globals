@@ -10,6 +10,14 @@ test("var", async t => {
 	t.deepEqual(await vm.getGlobalContext(), { a: 1 });
 });
 
+test("Date, issue #6", async t => {
+	let vm = new RetrieveGlobals(`const mydate = new Date();`);
+	let { mydate } = await vm.getGlobalContext(undefined, {
+		reuseGlobal: true
+	});
+	t.truthy(mydate instanceof Date);
+});
+
 test("isPlainObject", async t => {
 	// from eleventy-utils
 	function isPlainObject(value) {

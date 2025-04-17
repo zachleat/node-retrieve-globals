@@ -109,10 +109,12 @@ class RetrieveGlobals {
 		if(!context || typeof context !== "object" || Array.isArray(context)) {
 			return;
 		}
+		if(context instanceof Date) {
+			return;
+		}
 
 		if(!Object.getPrototypeOf(context).isPrototypeOf(Object.create({}))) {
 			Object.setPrototypeOf(context, Object.prototype);
-
 			// Go deep
 			for(let key in context) {
 				this._setContextPrototype(context[key]);
